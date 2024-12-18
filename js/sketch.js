@@ -1,5 +1,5 @@
 // シード値設定
-const SEED = 0;
+const SEED = 4;
 
 // キャンバスの設定
 const CANVAS = {
@@ -17,14 +17,14 @@ const TEXT_INFO = {
         font: "MABOROSHI_NIJIMI",
         size: 0.025,
         x: 0.5,
-        y: 0.03,
+        y: 0.02,
         spacing: 0.015,
         align: "CENTER"
     },
     dateTime: {
         date: {
             text: "1/9. THU",
-            size: 0.05,
+            size: 0.06,
             x: 0.8,
             y: 0.6
         },
@@ -32,7 +32,7 @@ const TEXT_INFO = {
             text: "18:00-21:00",
             size: 0.03,
             x: 0.8,
-            y: 0.64
+            y: 0.63
         }
     },
     location: {
@@ -63,12 +63,26 @@ const TEXT_INFO = {
         font: "JOSEFIN_SLAB",
         size: 0.03,
         x: 0.95,
-        y: 0.955
+        y: 0.93
+    },
+    contact: {
+        text: "X (@2024_hitahita)",
+        font: "JOSEFIN_SLAB",
+        size: 0.025,
+        x: 0.98,
+        y: 0.96
+    },
+    hashtag: {
+        text: "#flow_hitahita",
+        size: 0.025,
+        x: 0.8,
+        y: 0.74
     }
 };
 
 // アセット変数
-let KARLA, MABOROSHI_NIJIMI, JOSEFIN_SLAB, FLOW_LOGO, HITAHIATA_LOGO;
+let KARLA, MABOROSHI_NIJIMI, JOSEFIN_SLAB, FLOW_LOGO, HITAHIATA_LOGO, QR_IMG;
+let SPONCERS = [];
 
 // アセットのプリロード
 function preload() {
@@ -76,7 +90,10 @@ function preload() {
     MABOROSHI_NIJIMI = loadFont("../asset/font/maboroshi-nijimi.otf");
     JOSEFIN_SLAB = loadFont("../asset/font/JosefinSlab-Medium.ttf")
     FLOW_LOGO = loadImage("../asset/image/Flow.png");
-    HITAHIATA_LOGO = loadImage("../asset/image/HitaHita-Logo.png")
+    HITAHIATA_LOGO = loadImage("../asset/image/HitaHita-Logo.png");
+    QR_IMG = loadImage("../asset/image/site-qr.png");
+
+    SPONCERS[0] = loadImage("../asset/image/sponsor/Gonengo.png");
 }
 
 // セットアップ関数
@@ -85,46 +102,60 @@ function setup() {
     createCanvas(CANVAS.WIDTH, CANVAS.HEIGHT);
     background(255, 0, 0);
 
-    // randomSeed(4);
-    // noiseSeed(4);
+    randomSeed(SEED);
+    noiseSeed(SEED);
 
-    let GRADIENT_COLORS = generateGradientColors();
+    const GRADIENT_COLORS = generateGradientColors();
+    const centerX = random(width);
+    const centerY = random(height);
 
-    drawBackground(GRADIENT_COLORS);
+    push();
+    translate(width / 2, height / 2);
+    translate(random(-width * 0.5, width * 0.5), random(-height * 0.5, height * 0.5));
+    drawBackground(GRADIENT_COLORS, 1.7);
     push();
     const n = floor(random(1, 4));
     for(let i = 0; i < n; i++) {
         push();
-        translate(width / 2, height / 2);
-        translate(random(-width * 0.5, width*0.5), random(-height*0.5, height*0.5));
         scale(3 / n);
-        drawNoiseCircles(0, 0, min(width, height) * 0.8, 10, 20, 0.4, 0.6, 255);
+        drawNoiseCircles(0, 0, min(width, height) * 0.8, 10, 5000, 0.4, 0.6, 255);
         pop();
     }
     pop();
+    pop();
+
     drawTexts();
     drawLogos();
     drawSponsorBand();
     drawNoise(width * height * 0.2);
+    drawQR();
+}
+
+// QR画像の表示
+function drawQR(){
+    push();
+    imageMode(CENTER)
+    image(QR_IMG, width * 0.08, height * 0.89, min(width, height) * 0.1, min(width, height) * 0.1);
+    pop();
 }
 
 // グラデーションの作成
-function createGradient(cp) {
+function createGradient(grad) {
     const gradient = drawingContext.createRadialGradient(0, 0, 0, 0, 0, 0.5);
-    cp.forEach(({ stop, color }) => {
+    grad.forEach(({ stop, color }) => {
         gradient.addColorStop(stop, `rgb(${color.join(',')})`);
     });
     return gradient;
 }
 
 // 背景の描画
-function drawBackground(cp) {
+function drawBackground(grad, scl=1.0) {
     push();
     noStroke();
     fill(255);
-    drawingContext.fillStyle = createGradient(cp);
-    translate(width / 2, height / 2);
-    scale(width * 1.2, height);
+    drawingContext.fillStyle = createGradient(grad);
+    // translate(width / 2, height / 2);
+    scale(width * 1.2 * scl, height * scl);
     rectMode(CENTER);
     rect(0, 0, 1, 1);
     pop();
@@ -178,16 +209,19 @@ function drawSpacedText(txt, x, y, spacing, mode = "LEFT") {
     pop();
 }
 
-// 単一のノイズサークルの描画
-function drawSingleNoiseCircle(radius, vertexCount, minNoiseScale, maxNoiseScale) {
+function drawSingleNoiseCircle(radius, vertexCount, minNoiseScale, maxNoiseScale){
     beginShape();
-    for (let i = 0; i <= vertexCount - 2; i++) {
-        const noiseScale = map(noise(i), 0, 1, minNoiseScale, 0.55 + (i % 2) * 0.45);
+    for (let i = 0; i < vertexCount; i ++){
+        const grid = vertexCount / 10;
+        const th = map((i % grid), 0, grid, 0, PI);
+        const h = map(noise(floor(i/grid)), 0, 1, minNoiseScale, maxNoiseScale);
+        const noiseScale = map(pow(sin(th), 3)*h, 0, 1, minNoiseScale, maxNoiseScale)
         const newRadius = radius * noiseScale;
-        const angle = (TAU * i) / vertexCount;
+        const angle = TAU * i / vertexCount;
         const x = newRadius * cos(angle);
         const y = newRadius * sin(angle);
-        curveVertex(x, y);
+
+        vertex(x, y)
     }
     endShape(CLOSE);
 }
@@ -197,7 +231,7 @@ function drawNoiseCircles(x, y, maxRadius, circleCount, vertexCount, minNoiseSca
     push();
     translate(x, y);
     noFill();
-    stroke(255, 150);
+    stroke(255, 100);
     strokeWeight(1.5);
 
     for (let j = 0; j < circleCount; j++) {
@@ -249,6 +283,10 @@ function drawTexts() {
     textSize(width * detail.size);
     text(detail.text, width * detail.x, height * detail.y);
 
+    const hashtag = TEXT_INFO.hashtag;
+    textSize(width * hashtag.size);
+    text(hashtag.text, width * hashtag.x, height * hashtag.y);
+
     // 参加情報
     const participation = TEXT_INFO.participation;
     textFont(eval(participation.font));
@@ -267,13 +305,20 @@ function drawTexts() {
     textSize(width * producer.size);
     textAlign(RIGHT);
     text(producer.text, width * producer.x, height * producer.y);
+
+    // 制作者情報
+    const contact = TEXT_INFO.contact;
+    textFont(eval(contact.font));
+    textSize(width * contact.size);
+    textAlign(RIGHT);
+    text(contact.text, width * contact.x, height * contact.y);
 }
 
 // ロゴの描画
 function drawLogos() {
     // HitaHitaロゴ
     imageMode(CENTER);
-    image(HITAHIATA_LOGO, width * 0.97, height * 0.945, width * 0.015, width * 0.015 * HITAHIATA_LOGO.height / HITAHIATA_LOGO.width);
+    image(HITAHIATA_LOGO, width * 0.97, height * 0.92, width * 0.015, width * 0.015 * HITAHIATA_LOGO.height / HITAHIATA_LOGO.width);
 
     // Flowロゴ
     drawLogo(FLOW_LOGO, width / 2, height * 0.45, width * 0.75);
@@ -282,8 +327,15 @@ function drawLogos() {
 // スポンサー表示用の帯を描画
 function drawSponsorBand() {
     rectMode(CORNER);
-    fill(0);
+    fill(255);
+    noStroke();
     rect(0, height * 0.97, width, height * 0.03);
+
+    const h = height * 0.025;
+    const w = h * SPONCERS[0].width / SPONCERS[0].height;
+
+    imageMode(CENTER);
+    image(SPONCERS[0], width * 0.5, height * 0.985, w, h)
 }
 
 // HSBカラーモデルを使用して色を生成する関数
@@ -305,7 +357,8 @@ function generateHSBColor(baseHue, baseSaturation, baseBrightness) {
 
 // グラデーションの色設定を生成する関数
 function generateGradientColors() {
-    const baseHue = random(360);
+    // const baseHue = random(360);
+    const baseHue = 140;
 
     return [
         { stop: 0.00, color: generateHSBColor(baseHue, 90, 80) },
